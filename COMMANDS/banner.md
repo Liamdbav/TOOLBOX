@@ -1,3 +1,4 @@
+```
 # ~/.claude/commands/banner.md
 ---
 name: banner
@@ -130,3 +131,5 @@ print(center(C['border'] + BL + H * (box_w - 2) + BR + C['reset'], cols))
 print()
 PYEOF
 `
+```
+
