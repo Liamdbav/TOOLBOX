@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
+    "DISABLE_AUTO_COMPACT": "0",
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "VAULT": " CHEMIN VERS LE VAULT OBSIDIAN ",
+    "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY": "15",
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Bash(git *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(node *)",
+      "Bash(cargo *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(docker *)",
+      "Bash(nvm *)",
+      "Bash(rustc *)",
+      "Bash(tauri *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(**/.env*)",
+      "Read(**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(sudo *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "model": "sonnet",
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "language": "french",
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "/compact si contexte > 50%",
+      "/effort low pour lecture seule",
+      "/plan avant refacto cross-fichiers",
+      "/clear pour reset propre entre projets",
+      "/compact 'garde uniquement la stack et les fichiers modifiés' avant 2e compaction",
+      "/rewind si la dernière réponse a cassé quelque chose — pas besoin de re-expliquer",
+      "/btw pour poser une question rapide sans polluer le contexte principal",
+      "/effort high pour Tauri/Rust, low pour lire des logs ou des configs",
+      "CLAUDE.md à la racine de chaque projet : stack, conventions, chemins Python3.12 vs 3.14",
+      "/plan fix <bug> pour entrer directement en plan mode sur un problème ciblé",
+      "/recap en fin de session avant /compact pour garder une ancre sémantique",
+      "sous-agents pour les tâches parallèles isolées : cargo build + tests pendant que tu continues"
+    ]
+  },
+  "effortLevel": "medium",
+  "theme": "dark",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/stop-draft-recette.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
