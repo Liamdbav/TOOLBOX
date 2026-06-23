@@ -29,6 +29,7 @@ remove_plugins() {
         rm -rf ~/.zsh/plugins/zsh-syntax-highlighting
         rm -rf ~/.zsh/plugins/zsh-autosuggestions
         rm -rf ~/.zsh/plugins/zsh-completions
+        rm -rf ~/.zsh/plugins/git
         success "Plugins supprimés"
 
         # Supprimer le dossier plugins s'il est vide
