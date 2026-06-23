@@ -110,6 +110,19 @@ install_plugins() {
         ~/.zsh/plugins/zsh-completions \
         "Enhanced Completions" &
 
+    # Plugin git : aliases omz (ga, gst, gco, gp, gl…) extraits sans cloner tout omz
+    if [ ! -f ~/.zsh/plugins/git/git.plugin.zsh ]; then
+        info "Téléchargement plugin git (aliases)..."
+        mkdir -p ~/.zsh/plugins/git
+        curl -fsSL \
+            "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/plugins/git/git.plugin.zsh" \
+            -o ~/.zsh/plugins/git/git.plugin.zsh 2>/dev/null \
+            && success "Plugin git installé" \
+            || warn "Plugin git : échec du téléchargement (réseau ?)"
+    else
+        success "Plugin git déjà présent"
+    fi &
+
     wait
     success "Plugins prêts"
 }
@@ -231,6 +244,18 @@ git_info() {
 
     local status_label="" status_color="green"
 
+    # Vérifier ahead/behind par rapport à la remote
+    local ahead behind diverge_label=""
+    ahead=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+    behind=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
+    if [[ $ahead -gt 0 && $behind -gt 0 ]]; then
+        diverge_label=" ↑${ahead} à push · ↓${behind} à pull"
+    elif [[ $ahead -gt 0 ]]; then
+        diverge_label=" ↑${ahead} à push"
+    elif [[ $behind -gt 0 ]]; then
+        diverge_label=" ↓${behind} à pull"
+    fi
+
     if [[ -n "$git_status" ]]; then
         local has_staged has_unstaged has_untracked
         has_staged=$(echo "$git_status" | grep -E '^[MADRC]' | wc -l | tr -d ' ')
@@ -239,15 +264,15 @@ git_info() {
         status_color="yellow"
 
         if [[ $has_staged -gt 0 && $has_unstaged -gt 0 ]]; then
-            status_label="à commiter · modifié"
+            status_label="à commit · à add"
         elif [[ $has_staged -gt 0 ]]; then
-            status_label="à commiter"
+            status_label="à commit"
         elif [[ $has_unstaged -gt 0 && $has_untracked -gt 0 ]]; then
-            status_label="modifié · non suivi"
+            status_label="à add"
         elif [[ $has_unstaged -gt 0 ]]; then
-            status_label="modifié"
+            status_label="à add"
         elif [[ $has_untracked -gt 0 ]]; then
-            status_label="non suivi"
+            status_label="à add"
         fi
     fi
 
@@ -256,7 +281,7 @@ git_info() {
         status_part=" (%{$fg[$status_color]%}${status_label}%{$fg[magenta]%})"
     fi
 
-    echo "%{$fg[magenta]%}[${project}${status_part} %{$fg[$status_color]%}${branch}%{$fg[magenta]%}]%{$reset_color%}"
+    echo "%{$fg[magenta]%}[${project}${status_part} %{$fg[$status_color]%}${branch}%{$fg[cyan]%}${diverge_label}%{$fg[magenta]%}]%{$reset_color%}"
 }
 
 # ========================================
@@ -285,6 +310,8 @@ change_prompt() {
 # ========================================
 
 [[ -d ~/.zsh/plugins/zsh-completions ]] && fpath=(~/.zsh/plugins/zsh-completions/src $fpath)
+
+[[ -f ~/.zsh/plugins/git/git.plugin.zsh ]] && source ~/.zsh/plugins/git/git.plugin.zsh
 
 if [[ -f ~/.zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
     source ~/.zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -347,8 +374,13 @@ zsh_help() {
     echo ""
     echo "🌿 Git (automatique dans le prompt) :"
     echo "  [projet (statut) branche]"
-    echo "  Statuts : à commiter · modifié · non suivi"
-    echo "  Vert = propre, Jaune = modifications en cours"
+    echo "  à commit     → fichiers stagés prêts à commiter"
+    echo "  à add        → fichiers modifiés ou non trackés"
+    echo "  à commit · à add → les deux en même temps"
+    echo "  ↑N à push    → N commits locaux à pousser"
+    echo "  ↓N à pull    → N commits distants à tirer"
+    echo "  Vert = propre, Jaune = action requise"
+    echo "  Aliases git chargés : ga gst gco gp gl gd gcmsg…"
     echo ""
     echo "📊 Monitoring :"
     echo "  RAM: XX.XGo   CPU: XX%   HH:MM:SS (droite)"
@@ -361,6 +393,8 @@ zsh_help() {
         && echo "  ✅ Autosuggestions"    || echo "  ❌ Autosuggestions"
     [[ -d ~/.zsh/plugins/zsh-completions ]] \
         && echo "  ✅ Enhanced Completions" || echo "  ❌ Enhanced Completions"
+    [[ -f ~/.zsh/plugins/git/git.plugin.zsh ]] \
+        && echo "  ✅ Git aliases"        || echo "  ❌ Git aliases"
 }
 
 echo "🏠 ZSH prêt — 'zsh_help' pour l'aide"
@@ -382,18 +416,44 @@ set_default_shell() {
         echo "$zsh_bin" | sudo tee -a /etc/shells >/dev/null
     fi
 
-    if [ "$SHELL" = "$zsh_bin" ]; then
-        success "Shell par défaut déjà Zsh"
-        return
+    # chsh — modifie /etc/passwd (base UNIX)
+    if [ "$SHELL" != "$zsh_bin" ]; then
+        info "Changement du shell par défaut vers $zsh_bin (chsh)..."
+        if [ "$(uname)" = "Darwin" ]; then
+            chsh -s "$zsh_bin"
+        else
+            sudo chsh -s "$zsh_bin" "$USER" 2>/dev/null || sudo usermod -s "$zsh_bin" "$USER"
+        fi
+        success "chsh → $zsh_bin"
+    else
+        success "chsh déjà sur Zsh"
     fi
 
-    info "Changement du shell par défaut vers $zsh_bin..."
+    # Terminal.app (macOS) a sa propre préférence qui override chsh.
+    # Sans NewWindowSettingsBehavior=0, il peut rester sur /bin/bash en dur.
     if [ "$(uname)" = "Darwin" ]; then
-        chsh -s "$zsh_bin"
-    else
-        sudo chsh -s "$zsh_bin" "$USER" 2>/dev/null || sudo usermod -s "$zsh_bin" "$USER"
+        if defaults write com.apple.Terminal NewWindowSettingsBehavior -int 0 2>/dev/null; then
+            success "Terminal.app → 'Default login shell' activé"
+        else
+            warn "defaults write Terminal.app échoué (ignoré)"
+        fi
+
+        # Vider le CommandString de chaque profil.
+        # Un CommandString non-vide force un shell explicite en plus du login shell
+        # → double invocation de zsh. On le supprime ; NewWindowSettingsBehavior=0
+        # suffit à utiliser le login shell défini par chsh.
+        local plist=~/Library/Preferences/com.apple.Terminal.plist
+        local default_profile
+        default_profile=$(defaults read com.apple.Terminal "Default Window Settings" 2>/dev/null || echo "")
+        if [ -n "$default_profile" ]; then
+            /usr/libexec/PlistBuddy \
+                -c "Delete 'Window Settings':'${default_profile}':CommandString" \
+                "$plist" 2>/dev/null || true
+            success "CommandString supprimé pour le profil '${default_profile}'"
+        fi
+
+        success "Terminal.app configuré → Zsh (effectif à la prochaine ouverture de fenêtre)"
     fi
-    success "Shell par défaut → Zsh (effectif à la prochaine connexion)"
 }
 
 # -----------------------------------------------------------------------------
@@ -406,6 +466,7 @@ run_checks() {
     [ -d ~/.zsh/plugins/zsh-syntax-highlighting ] && success "Plugin syntax-highlighting" || warn "Plugin syntax-highlighting absent"
     [ -d ~/.zsh/plugins/zsh-autosuggestions ]     && success "Plugin autosuggestions"     || warn "Plugin autosuggestions absent"
     [ -d ~/.zsh/plugins/zsh-completions ]         && success "Plugin completions"         || warn "Plugin completions absent"
+    [ -f ~/.zsh/plugins/git/git.plugin.zsh ]      && success "Plugin git (aliases)"       || warn "Plugin git absent"
 }
 
 # -----------------------------------------------------------------------------
